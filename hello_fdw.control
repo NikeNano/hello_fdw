@@ -1,0 +1,5 @@
+comment = 'hello_fdw:  Created by pgx'
+default_version = '1.0'
+module_pathname = '$libdir/hello_fdw'
+relocatable = false
+superuser = false
