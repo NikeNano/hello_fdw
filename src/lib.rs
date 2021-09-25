@@ -20,7 +20,8 @@ fn hello_fdw_validator(_options: Vec<String>, _oid: oid) {
 
 #[pg_extern]
 fn hello_fdw_handler() -> fdw_handler {
-    debug1!("FDW was called!");
+    debug1!("HelloFdw: hello_fdw_handler");
+
     let mut fdwroutine =
         pgx::PgBox::<pgx_pg_sys::FdwRoutine>::alloc_node(pgx_pg_sys::NodeTag_T_FdwRoutine);
 
@@ -35,7 +36,6 @@ fn hello_fdw_handler() -> fdw_handler {
     fdwroutine.EndForeignScan = Some(hello_end_foreign_scan);
     fdwroutine.AnalyzeForeignTable = Some(hello_analyze_foreign_table);
 
-    debug1!("FDW init about to return!");
     fdwroutine
 }
 
@@ -106,9 +106,8 @@ extern "C" fn hello_explain_foreign_scan(
 ) {
     debug1!("HelloFdw: hello_explain_foreign_scan");
 
-    // TODO: Cleanup this memory.
-    let hello = std::ffi::CString::new("Hello").expect("checked and works");
-    let hello_explain = std::ffi::CString::new("Hello Explain Value").expect("checked and works");
+    let hello = std::ffi::CString::new("Hello").expect("invalid");
+    let hello_explain = std::ffi::CString::new("Hello Explain Value").expect("invalid");
     unsafe { pgx_pg_sys::ExplainPropertyText(hello.as_ptr(), hello_explain.as_ptr(), es) }
 }
 
@@ -120,11 +119,9 @@ unsafe extern "C" fn hello_begin_foreign_scan(
     debug1!("HelloFdw: hello_begin_foreign_scan");
 
     if eflags & pgx_pg_sys::EXEC_FLAG_EXPLAIN_ONLY as i32 != 0 {
-        debug1!("HelloFdw: hello_begin_foreign_scan: exec flag was explain only");
         return;
     }
 
-    // TODO: palloc this in current mem context.
     let mut state = pgx::PgBox::<HelloFdwState>::alloc0();
     state.rownum = 0;
     (*node).fdw_state = state.into_pg() as *mut std::ffi::c_void;
@@ -139,45 +136,19 @@ unsafe extern "C" fn hello_iterate_foreign_scan(
     let slot = (*node).ss.ss_ScanTupleSlot;
     let state = (*node).fdw_state as *mut HelloFdwState;
 
-    debug1!("HelloFdw: hello_iterate_foreign_scan: check rownum");
-    debug1!(
-            "HelloFdw: hello_iterate_foreign_scan: clear slot: slot: {:?}, heaptuple?: {:?}, virt? {:?}, tts_flags: {:?}",
-            slot,
-            (*slot).tts_ops == &pgx_pg_sys::TTSOpsHeapTuple,
-            (*slot).tts_ops == &pgx_pg_sys::TTSOpsVirtual,
-            (*slot).tts_flags,
-        );
     if (*state).rownum > 0 {
-        debug1!("HelloFdw: hello_iterate_foreign_scan: clear slot");
-        let clear = (*(*slot).tts_ops).clear.unwrap();
-        // Why does heap_freetuple cause this to segfault?
-        //(*slot).tts_flags &= !pgx_pg_sys::TTS_FLAG_SHOULDFREE as u16;
-        debug1!(
-            "HelloFdw: hello_iterate_foreign_scan: clear slot: slot: {:?}, heaptuple?: {:?}, virt? {:?}, tts_flags: {:?} AFTER!",
-            slot,
-            (*slot).tts_ops == &pgx_pg_sys::TTSOpsHeapTuple,
-            (*slot).tts_ops == &pgx_pg_sys::TTSOpsVirtual,
-            (*slot).tts_flags,
-        );
-        clear(slot);
-        debug1!("HelloFdw: hello_iterate_foreign_scan: clear slot: done");
+        (*(*slot).tts_ops).clear.expect("missing")(slot);
         return slot;
     }
 
-    debug1!("HelloFdw: hello_iterate_foreign_scan: pull rel and natts");
     let rel = (*node).ss.ss_currentRelation;
     let attinmeta = pgx_pg_sys::TupleDescGetAttInMetadata((*rel).rd_att);
     let natts = (*(*rel).rd_att).natts;
 
-    debug1!(
-        "HelloFdw: hello_iterate_foreign_scan: build values: {:?}/{}",
-        (*(*attinmeta).tupdesc).natts,
-        natts
-    );
     let size = std::mem::size_of::<*const ::std::os::raw::c_char>() * natts as usize;
     let values = pgx_pg_sys::palloc0(size) as *mut *const ::std::os::raw::c_char;
     let slice = std::slice::from_raw_parts_mut(values, size);
-    let hello_world = std::ffi::CString::new("Hello,World").expect("checked and works");
+    let hello_world = std::ffi::CString::new("Hello,World").expect("invalid");
     for i in 0..natts {
         slice[i as usize] = hello_world.as_ptr();
     }
