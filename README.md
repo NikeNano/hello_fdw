@@ -23,6 +23,24 @@ or you can run the test suite by running:
 cargo pgx test pg13
 ```
 
+```SQL
+hello_fdw=# CREATE EXTENSION hello_fdw;
+CREATE EXTENSION
+hello_fdw=# CREATE FOREIGN DATA WRAPPER hello_fdw HANDLER hello_fdw_handler VALIDATOR hello_fdw_validator;
+CREATE FOREIGN DATA WRAPPER
+hello_fdw=# CREATE SERVER hello_server FOREIGN DATA WRAPPER hello_fdw;
+CREATE SERVER
+hello_fdw=# CREATE FOREIGN TABLE hello_fdw_table (id text, data text) SERVER hello_server;
+CREATE FOREIGN TABLE
+hello_fdw=# SELECT * FROM hello_fdw_table;
+     id      |    data
+-------------+-------------
+ Hello,World | Hello,World
+(1 row)
+
+hello_fdw=#
+```
+
 ### License
 
 MIT

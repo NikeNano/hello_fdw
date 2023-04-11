@@ -11,7 +11,7 @@ pub struct HelloFdwState {
 #[allow(non_camel_case_types)]
 type oid = pgx_pg_sys::Oid;
 #[allow(non_camel_case_types)]
-type fdw_handler = pgx::PgBox<pgx_pg_sys::FdwRoutine>;
+type fdw_handler = pgx::PgBox<pgx_pg_sys::FdwRoutine, pgx::AllocatedByRust>;
 
 #[pg_extern]
 fn hello_fdw_validator(_options: Vec<String>, _oid: oid) {
@@ -19,7 +19,7 @@ fn hello_fdw_validator(_options: Vec<String>, _oid: oid) {
 }
 
 #[pg_extern]
-fn hello_fdw_handler() -> fdw_handler {
+unsafe fn hello_fdw_handler() -> fdw_handler {
     debug1!("HelloFdw: hello_fdw_handler");
 
     let mut fdwroutine =
