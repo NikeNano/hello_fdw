@@ -205,23 +205,24 @@ extern "C" {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pg_schema]
 mod tests {
     use pgx::*;
 
+    #[cfg(not(feature = "no-schema-generation"))]
     #[pg_test]
-    fn test_select_star() {
-        Spi::run("CREATE FOREIGN DATA WRAPPER hello_fdw HANDLER hello_fdw_handler VALIDATOR hello_fdw_validator");
-        Spi::run("CREATE SERVER hello_server FOREIGN DATA WRAPPER hello_fdw");
-        Spi::run("CREATE FOREIGN TABLE hello_fdw_table (id text, data text) SERVER hello_server");
+    fn test_selecty() {
+        Spi::run("CREATE FOREIGN DATA WRAPPER hello_fdw HANDLER hello_fdw_handler VALIDATOR hello_fdw_validator").unwrap();
+        Spi::run("CREATE SERVER hello_server FOREIGN DATA WRAPPER hello_fdw").unwrap();
+        Spi::run("CREATE FOREIGN TABLE hello_fdw_table (id text, data text) SERVER hello_server").unwrap();
 
         let row = Spi::get_two::<String, String>("SELECT * FROM hello_fdw_table");
+        let exp = Ok((Some("Hello,World".to_string()), Some("Hello,World".to_string())));
+
 
         assert_eq!(
             row,
-            (
-                Some("Hello,World".to_string()),
-                Some("Hello,World".to_string())
-            )
+            exp
         );
     }
 }
